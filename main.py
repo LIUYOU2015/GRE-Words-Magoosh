@@ -65,9 +65,9 @@ class MagooshDataRetriever(object):
 
 class Word(object):
 	WORD_HTML = """
-		<span class='word-%s' style='background-color: %s'>
+		<div class='word-%s' style='background-color: %s;width:100px;display:inline-block'>
 			<a href='#' onclick=\"toggleDiv('%s'); return false\">%s</a>
-		</span>
+		</div>
 	"""
 	DESC_HTML = """
 		<div id='%s' class='explanation explanation-%s' style='display:none'>
