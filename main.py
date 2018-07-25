@@ -8,7 +8,7 @@ EASY_CHAR = ""
 
 DIFFICULT_COLOR = 'orange'
 MEDIUM_COLOR = 'yellow'
-EASY_COLOR = 'gray'
+EASY_COLOR = 'white'
 
 
 
@@ -26,11 +26,11 @@ import json
 
 class MagooshDataRetriever(object):
 	URL = 'https://gre.magoosh.com/flashcards/vocabulary/%s/%s'
-	
+
 	def __init__(self, fileName):
 		self.fileName = fileName
 		self.map = self.loadMap(self.fileName)
-		
+
 	def retrieve(self, category, word):
 		if word not in self.map:
 			print "Get:", category, word
@@ -47,11 +47,11 @@ class MagooshDataRetriever(object):
 		content = content[content.index(start) + len(start):]
 		end = "<div class='flashcard-actions'>"
 		content = content[:content.index(end)]
-	
+
 		start = content.index('<div class="flashcard-review-label')
 		end = start + content[start:].index('</div>') + "</div>"
 		return content[:start] + content[end:]
-		
+
 	@staticmethod
 	def loadMap(fileName):
 		with open(fileName) as f:
@@ -83,44 +83,106 @@ class Word(object):
 		</a>
 	</div>
 	"""
-	
+	WORD_HTML1 = """
+		<div class='word-%s-1' style='background-color: %s;width:120px;display:inline-block'>
+			<a href='#' onclick=\"toggleDiv('%s-1'); return false\">%s</a>
+		</div>
+	"""
+	DESC_HTML1 = """
+		<div id='%s-1' class='explanation explanation-%s-1' style='display:none'>
+		%s
+		<a href='javascript:void(0)' onclick='mark(\"%s\", 0); return false;'>
+			Easy
+		</a> |
+		<a href='javascript:void(0)' onclick='mark(\"%s\", 1); return false;'>
+			Medium
+		</a> |
+		<a href='javascript:void(0)' onclick='mark(\"%s\", 2); return false;'>
+			Difficult
+		</a>
+	</div>
+	"""
+	WORD_HTML2 = """
+		<div class='word-%s-2' style='background-color: %s;width:120px;display:inline-block'>
+			<a href='#' onclick=\"toggleDiv('%s-2'); return false\">%s</a>
+		</div>
+	"""
+	DESC_HTML2 = """
+		<div id='%s-2' class='explanation explanation-%s-2' style='display:none'>
+		%s
+		<a href='javascript:void(0)' onclick='mark(\"%s\", 0); return false;'>
+			Easy
+		</a> |
+		<a href='javascript:void(0)' onclick='mark(\"%s\", 1); return false;'>
+			Medium
+		</a> |
+		<a href='javascript:void(0)' onclick='mark(\"%s\", 2); return false;'>
+			Difficult
+		</a>
+	</div>
+	"""
+
 	def __init__(self, category, text, retrieveFn):
 		self.isDifficult = text.strip().endswith(DIFFICULT_CHAR)
 		self.isMedium = text.strip().endswith(MEDIUM_CHAR)
 		self.word = text.rstrip(DIFFICULT_CHAR + MEDIUM_CHAR)
 		self.category = category
 		self.description = retrieveFn(category, self.word)
-	
+
 	def wordHtml(self):
 		color = [
 					[EASY_COLOR, MEDIUM_COLOR][self.isMedium],
 					DIFFICULT_COLOR
 				][self.isDifficult]
 		return self.WORD_HTML%(self.word, color, self.word, self.word)
-	
+
 	def descriptionHtml(self):
 		w, d = self.word, self.description
 		params = (w,w,d,w,w,w)
 		return self.DESC_HTML%params
 
+	def wordHtml1(self):
+		color = [
+					[EASY_COLOR, MEDIUM_COLOR][self.isMedium],
+					DIFFICULT_COLOR
+				][self.isDifficult]
+		return self.WORD_HTML1%(self.word, color, self.word, self.word)
+
+	def descriptionHtml1(self):
+		w, d = self.word, self.description
+		params = (w,w,d,w,w,w)
+		return self.DESC_HTML1%params
+
+	def wordHtml2(self):
+		color = [
+					[EASY_COLOR, MEDIUM_COLOR][self.isMedium],
+					DIFFICULT_COLOR
+				][self.isDifficult]
+		return self.WORD_HTML2%(self.word, color, self.word, self.word)
+
+	def descriptionHtml2(self):
+		w, d = self.word, self.description
+		params = (w,w,d,w,w,w)
+		return self.DESC_HTML2%params
+
 class Deck(object):
 	def __init__(self, fileName):
 		self.fileName = fileName
 		self.map = self.load(self.fileName)
-	
+
 	def html(self):
 		dw = list(x for x in sum(self.map.values(), []) if x.isDifficult)
 		mw = list(x for x in sum(self.map.values(), []) if x.isMedium)
-		
+
 		s = ("<h1>Difficult Words (%d)</h1>"%len(dw) +
 			"".join(
-				x.wordHtml()+x.descriptionHtml()+["<br>",""][bool((index+1)%10)]
+				x.wordHtml1()+x.descriptionHtml1()+["<br>",""][bool((index+1)%10)]
 				for index, x in enumerate(dw)
-			) + 
+			) +
 			"<hr>")
 		s = s + ("<h1>Medium level difficulty Words(%d)</h1>"%len(mw) +
 			"".join(
-				x.wordHtml()+x.descriptionHtml()+["<br>",""][bool((index+1)%10)]
+				x.wordHtml2()+x.descriptionHtml2()+["<br>",""][bool((index+1)%10)]
 				for index, x in enumerate(mw)
 			) + "<hr>")
 		s = s + ("<h1>All words</h1>" +
@@ -134,14 +196,14 @@ class Deck(object):
 			])
 		)
 		return s
-	
+
 	@staticmethod
 	def load(fileName):
 		dictionary = OrderedDict()
 		curTitle = None
 		curGroup = None
 		magoosh = MagooshDataRetriever(JSON_FILE)
-		
+
 		with open(fileName) as f:
 			for line in f:
 				if not line.strip():
@@ -156,7 +218,7 @@ class Deck(object):
 					word = word.strip()
 					curGroup.append(Word(curTitle, word, magoosh.retrieve))
 		return dictionary
-	
+
 	@staticmethod
 	def shuffle(lst):
 		random.shuffle(lst)
@@ -164,7 +226,7 @@ class Deck(object):
 
 def regenerate():
 	deck = Deck('Words.txt')
-	
+
 	with open(OUT_HTML, 'w') as out:
 		print>>out, "<html><body>"
 		print>>out, deck.html().encode('utf-8')
@@ -181,7 +243,7 @@ def regenerate():
 				elem.style.display = state== 'block' ? 'none' : 'block';
 			});
 		}
-		
+
 		function mark(id, diffLevel) { //level = 1 for medium, 2 for difficult
 			if ([0,1,2].indexOf(diffLevel) == -1)
 				return;
@@ -194,7 +256,7 @@ def regenerate():
 							x.style.backgroundColor = COLORS[obj.state]
 						})
 					}
-					
+
 				}
 			}
 			xhr.open('POST', '/words/' + id, true);
@@ -216,7 +278,7 @@ def serve(port):
 			self.send_response(200)
 			self.end_headers()
 			self.wfile.write(json.dumps({"state": result}))
-			
+
 		def do_GET(self):
 			regenerate()
 			self.send_response(200)
@@ -224,7 +286,7 @@ def serve(port):
 			with open(OUT_HTML) as f:
 				self.wfile.write(f.read())
 			self.wfile.close()
-		
+
 		@staticmethod
 		def updateState(word, state):
 			updated = False
@@ -243,18 +305,18 @@ def serve(port):
 					else:
 						print>>f, line
 			return updated
-	
+
 	httpd = SocketServer.TCPServer(("", port), Handler)
 
 	print "serving at port", port
 	httpd.serve_forever()
-	
+
 def main():
 	if len(sys.argv) > 1 and "-serve" == sys.argv[1]:
 		serve(int(sys.argv[2]))
 	else:
 		print "Generating latest HTML"
 		regenerate()
-	
+
 if __name__ == '__main__':
 	main()
